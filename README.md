@@ -31,6 +31,11 @@ It is intended to serve as a base configuration for other projects within the or
    ```bash
    apm install
    ```
+   
+   For Claude, Codexm and GitHub Copilot, it's required to specify the target explicitly.
+   ```bash
+   apm install --target claude,codex,copilot
+   ```
 
    *Note: MCP servers are configured to run via `uvx`, so they will be downloaded and executed on-demand. No manual pre-installation of individual MCP servers is required.*
 
