@@ -1,0 +1,9 @@
+apm.lock.yaml
+
+# APM dependencies
+apm_modules/
+.agents/*
+.claude/*
+.codex/*
+.github/*
+.vscode/*
