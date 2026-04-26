@@ -5,19 +5,18 @@ dependencies:
   apm:
     # Skills from GitHub repository
     - anthropics/skills/skills/skill-creator
-    - anthropics/skills/skills/skill-creator
     - anthropics/skills/skills/pdf
   mcp:
-    # MPC from GitHub repository
+    # MCP managed via uvx (PyPI)
     - name: mcp-bigquery
       registry: false
       transport: stdio
       command: uvx
-      args: ["--from", "git+https://github.com/caron14/mcp-bigquery.git", "mcp-bigquery"]
+      args: ["mcp-bigquery"]
       env:
         BQ_PROJECT: "YOUR_GCP_PROJECT_ID"
     - name: mcp-duckvault
       registry: false
       transport: stdio
       command: uvx
-      args: ["--from", "git+https://github.com/caron14/mcp-duckvault.git", "duckvault", "/path/to/your/obsidian/vault"]
+      args: ["duckvault", "/path/to/your/obsidian/vault"]
