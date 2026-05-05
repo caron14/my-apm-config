@@ -6,6 +6,10 @@ dependencies:
     # Skills from GitHub repository
     - anthropics/skills/skills/skill-creator
     - anthropics/skills/skills/pdf
+    - anthropics/skills/skills/docx
+    - anthropics/skills/skills/xlsx
+    - anthropics/skills/skills/claude-api
+    - anthropics/skills/skills/doc-coauthoring
   mcp:
     # MCP managed via uvx (PyPI)
     - name: mcp-bigquery
