@@ -1,6 +1,6 @@
 ---
 name: obsidian-core-io
-description: Use this skill when the user wants to read, search, append, or create notes in their Obsidian vault via the Obsidian CLI. Trigger phrases include "find my note about X", "what did I write on Y", "add a paragraph to Z note", "create a new note titled …", "search the vault", and Japanese equivalents (ノート, 保管庫, 検索, 追記, ノートを開く, ノートに追記). Owns four CLI commands - `search:context`, `read`, `create`, `append` - plus `prepend` for metadata-adjacent additions. ALWAYS run `search:context` first to locate a target before any `read` or `append`; never guess a path. For existing notes use `append` (or `prepend`); NEVER overwrite an existing path with `create`. Use `format=json` for any output Claude must parse. Do NOT use this skill for Bases / structured records (use obsidian-bases) or for today's daily note / task toggling (use obsidian-daily-log). Disambiguation - when the user says "log this" with no target file, defer to obsidian-daily-log; when they say "add this to my <named> note", that's this skill.
+description: Use this skill when the user wants to read, search, append, or create notes in their Obsidian vault via the Obsidian CLI. Trigger phrases include "find my note about X", "what did I write on Y", "add a paragraph to Z note", "create a new note titled …", "search the vault", and Japanese equivalents (ノート, 保管庫, 検索, 追記, ノートを開く, ノートに追記). Owns four CLI commands - `search:context`, `read`, `create`, `append` - plus `prepend` for metadata-adjacent additions. ALWAYS run `search:context` first to locate a target before any `read` or `append`; never guess a path. For existing notes use `append` (or `prepend`); NEVER overwrite an existing path with `create`. Use `format=json` for any output Claude must parse. Do NOT use this skill for today's daily note / task toggling (use obsidian-daily-log). For structured task queries, read `TaskManagement.md` with this skill. Disambiguation - when the user says "log this" with no target file, defer to obsidian-daily-log; when they say "add this to my <named> note", that's this skill.
 ---
 
 # Obsidian Core I/O
@@ -19,13 +19,13 @@ Trigger this skill when the user asks to:
 Trigger phrases (English + 日本語): note, vault, search, append, create note, ノート, 保管庫, 検索, 追記, 新規ノート.
 
 **Hand-offs — do NOT do these here:**
-- Querying Bases / `.base` files / structured records → use **obsidian-bases**.
+- Querying structured task/project records → `read` **TaskManagement.md** or relevant index notes (e.g., `_Index_Work.md`) with this skill.
 - Logging into today's daily note, toggling tasks, capturing meeting notes → use **obsidian-daily-log**.
 
 **Disambiguation rules:**
 - "log this" with no explicit target → obsidian-daily-log.
 - "add this to my <named> note" → this skill (`append`).
-- "all notes tagged X" → start with `tags` (this skill); escalate to obsidian-bases only if structured properties are needed.
+- "all notes tagged X" → start with `tags` (this skill); for deeper structured queries, read `TaskManagement.md` or the relevant index note.
 
 ## Mandatory procedure: `search:context` → `read`
 
@@ -38,11 +38,11 @@ Do not skip steps. Hallucinated paths are the most common failure mode for this 
 
 **Failure mode (do not do this):**
 ```
-User: "What did I say about A-corp's pricing?"
-WRONG: obsidian read file=A-corp                   # guesses a name; may not exist or may collide
-RIGHT: obsidian search:context query="A-corp pricing" format=json
+User: "What did I say about Company-A's pricing?"
+WRONG: obsidian read file=Company-A                   # guesses a name; may not exist or may collide
+RIGHT: obsidian search:context query="Company-A pricing" format=json
        → pick path from results
-       → obsidian read path="Clients/A-corp/2026-04 Pricing review.md"
+       → obsidian read path="Clients/Company-A/2026-04 Pricing review.md"
 ```
 
 ## Targeting: `file=` vs `path=` vs active file
@@ -54,14 +54,39 @@ RIGHT: obsidian search:context query="A-corp pricing" format=json
 | (omitted) | Operates on whatever file the user currently has active in the Obsidian UI. Use sparingly — Claude cannot see the UI state. |
 
 For escape rules (spaces, newlines, quotes), see `references/targeting-cheatsheet.md`.
-
 ## Append vs prepend vs create
 
 | Action | Use when | Forbidden when |
 | :--- | :--- | :--- |
 | `append` | Adding content to the **end** of an existing note. Default choice for adding to existing notes. | — |
 | `prepend` | Adding content **after frontmatter / properties** but before the body. Use for top-of-note summaries or new sections that should appear first. | — |
-| `create` | Creating a **brand new** note at a path that does not already exist. May use `template=<name>` to apply a template. | The path already exists. **Never** overwrite with `create`. If unsure, run `read` first — a successful read means the file exists and you must `append` instead. |
+| `create` | Creating a **brand new** note at a path that does not already exist. **Must include YAML frontmatter.** | The path already exists. **Never** overwrite with `create`. |
+
+## Vault-Specific Rules
+
+To comply with the vault's `metadata-linter` and organizational agents, all files must follow these rules:
+
+### 1. Mandatory YAML Frontmatter
+Every new file created with `obsidian create` **MUST** include YAML frontmatter at the top with `tags` (array) and `created` (YYYYMMDD format).
+
+```bash
+obsidian create path="Work/Project-A.md" content="---
+tags: [work, project-a]
+created: 20260505
+---
+# Project A
+..."
+```
+
+### 2. Research File Naming
+Files created in `Research/` (or any deep research context) must append a model suffix to the filename:
+- `_c` (Claude)
+- `_g` (Gemini)
+- `_o3` (O3-mini/High)
+
+Example: `Research/LLM_Scaling_Laws_g.md`
+
+## Output handling
 
 For destructive intent (rename/move), use `move` — it auto-updates all wikilinks across the vault. Do not use shell `mv`.
 
@@ -83,7 +108,7 @@ If verification fails, fix forward — do not silently retry the write.
 ## Hand-off
 
 For tasks that fall outside this skill's scope, defer to:
-- **obsidian-bases** — `.base` files, structured queries, project dashboards, CRM-style records.
+- Structured task/project queries — `read TaskManagement.md` or `read path=_Index_Work.md` with this skill.
 - **obsidian-daily-log** — today's daily note, task toggling, meeting capture.
 
-If the user's request spans multiple skills (e.g., "search past notes about A-corp, then log a prep summary"), do the search/read part here and explicitly hand control to the next skill for the logging step.
+If the user's request spans multiple skills (e.g., "search past notes about Company-A, then log a prep summary"), do the search/read part here and explicitly hand control to the next skill for the logging step.

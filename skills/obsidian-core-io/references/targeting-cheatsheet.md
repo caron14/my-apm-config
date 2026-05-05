@@ -15,7 +15,7 @@ Use only when the name is known to be unique (e.g., "Inbox", "README", a UUID-st
 
 ### 2. `path=<vault-relative-path>`
 
-Exact path from the vault root, e.g. `Clients/A-corp/2026-04 Pricing review.md`.
+Exact path from the vault root, e.g. `Clients/Company-A/2026-04 Pricing review.md`.
 
 - Always deterministic.
 - **Required** for any path that came out of `search` / `search:context` / `links` / `backlinks` JSON output — those return paths, not names.
@@ -39,7 +39,7 @@ Otherwise                                          → search:context first, the
 
 ## Escaping rules
 
-- Wrap any value containing spaces in double quotes: `path="Clients/A-corp/2026-04 Notes.md"`.
+- Wrap any value containing spaces in double quotes: `path="Clients/Company-A/2026-04 Notes.md"`.
 - Embed newlines in `content=` values as the two-character escape `\n`. The CLI converts them to real newlines.
 - Embed literal double quotes inside a quoted value as `\"`.
 - Single quotes do not require escaping inside double-quoted values.

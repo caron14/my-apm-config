@@ -4,79 +4,99 @@ Reference for date formats, section anchors, task syntax, and template fields us
 
 ## Date format
 
-The Obsidian Daily Notes plugin defines the date format and folder location. The most common defaults:
+Configured in `.obsidian/daily-notes.json`:
 
-- Format: `YYYY-MM-DD` (e.g., `2026-05-05`)
+- Format: `YYYYMMDD` (e.g., `20260505`) — **no hyphens**
 - Folder: `Daily/` at the vault root
-- Template: a note named `Daily` under `Templates/` (configurable)
+- Template: `Template_Daily_Memo` under `_Template/`
 
-The skill should never hardcode these — `scripts/resolve-daily-path.sh` defers to `obsidian daily:append` when available, which honors whatever the user has configured. The fallback form (`Daily/YYYY-MM-DD.md`) is a best-effort default and may need adjustment if the user has a non-standard layout.
+The skill must never hardcode these. `scripts/resolve-daily-path.sh` defers to `obsidian daily:append` when available, which honors the plugin config. The fallback generates `path=Daily/YYYYMMDD.md`.
+
+When passing a date argument to the script, use either `YYYY-MM-DD` or `YYYYMMDD` — the script normalises it.
 
 ## Standard section anchors
 
-Most users structure their daily note around a small set of stable headings. The skill should use these anchors for `section=` parameters when appending to today:
+The daily memo template (`_Template/Template_Daily_Memo.md`) defines two sections:
 
 | Heading | Purpose |
 | :--- | :--- |
-| `## Log` | Free-form timestamped entries (`- HH:MM — …`) |
-| `## Tasks` | Today's todo list (`- [ ] …` / `- [x] …`) |
-| `## Meetings` | Meeting captures, one `### <meeting-title>` per meeting |
-| `## Notes` | Longer-form thoughts not tied to a timestamp |
-| `## Followups` | Items spawned today that need future action |
+| `### New Task` | Today's tasks with priority tags |
+| `### Meeting Minutes` | One meeting block per meeting (see structure below) |
 
-If the user's template uses different headings, capture them once (read today's daily note via `obsidian read`) and adapt — do not impose these names on top of an existing template.
+**There is no `## Log` section.** Do not append to a section that does not exist in the template — it creates a duplicate heading.
 
-## Timestamped log entry format
+If you need to add a free-form note that does not fit either section, append it to the end of the file without a `section=` parameter.
+
+## Task format
+
+Tasks live under `### New Task` and must carry a priority tag. The Dataview query in `TaskManagement.md` filters by `contains(text, "#priority/")` — tasks without this tag are invisible to the aggregation view.
 
 ```
-- HH:MM — <content>
+- [ ] <task description> #priority/high
+- [ ] <task description> #priority/medium
+- [ ] <task description> #priority/low
 ```
 
-Always 24-hour time, em-dash separator, content on the same line. Multi-line content can use `\n` to embed line breaks; the CLI converts the escape into real newlines.
+Category tags (`#project`, `#meeting`) are added on the `Tags:` line below the section heading, not inline on each task:
+
+```
+### New Task
+
+Tags: #project #meeting
+
+- [ ] Review PR #42 #priority/high
+- [ ] Update README #priority/low
+```
+
+When appending a new task via the CLI, target the section explicitly:
 
 ```bash
-obsidian daily:append section="Log" content="- $(date +%H:%M) — Reviewed PR #142.\n  Left two comments on the migration." --silent
+obsidian daily:append section="New Task" content="- [ ] <task> #priority/high" --silent
 ```
 
-## Task syntax
+## Task toggling
 
-Obsidian recognizes GFM checkbox syntax:
+`obsidian task toggle` matches by the task's visible text (excluding the checkbox prefix). Include enough of the text to be unique:
 
-```
-- [ ] open task
-- [x] completed task
-- [/] in-progress task   (some plugins only)
-- [-] cancelled task     (some plugins only)
+```bash
+obsidian task toggle file="20260505" match="Review PR #42"
 ```
 
-The CLI's `task toggle` flips between `[ ]` and `[x]` on a matched line. Other states (`[/]`, `[-]`) require explicit `prepend`/`append` rewrites; do not assume `task toggle` cycles through them.
+After toggling, optionally log the completion at the bottom of the file:
 
-## Meeting capture template
+```bash
+obsidian daily:append content="- Closed: Review PR #42" --silent
+```
 
-Recommended structure for a meeting capture inside `## Meetings`:
+## Meeting capture structure
+
+Each meeting occupies one block under `### Meeting Minutes`, separated by `---`:
 
 ```markdown
-### <Meeting title> — YYYY-MM-DD HH:MM
+---
+Meeting: <meeting title>
+Attendee: <names>
+Tags: <relevant tags>
 
-- **Attendees**: …
-- **Topic**: …
+Next Action
+- [ ] <action item> #priority/high
+- <action item>
 
-#### Notes
-- …
-
-#### Decisions
-- …
-
-#### Followups
-- [ ] <action> (owner: …, due: …)
-- [ ] …
+Note:
+- <observation>
+- <decision>
 ```
 
-Followups as checkboxes mean they can be toggled via `task toggle` later, and are picked up by Obsidian's task-aggregation views.
+When appending a new meeting block via the CLI:
+
+```bash
+obsidian daily:append section="Meeting Minutes" content="---\nMeeting: Company-A sync\nAttendee: User, Colleague\nTags: #project\n\nNext Action\n- [ ] Send revised estimate #priority/high\n\nNote:\n- Agreed on June delivery" --silent
+```
 
 ## Pitfalls
 
+- **Wrong date format**: the vault uses `YYYYMMDD`, not `YYYY-MM-DD`. `path=Daily/2026-05-05.md` does not exist.
+- **Appending to non-existent section**: `section="Log"` or `section="Tasks"` creates a new heading that duplicates the template structure. Use `section="New Task"` or `section="Meeting Minutes"` only.
+- **Tasks without priority tag**: `- [ ] task` with no `#priority/` tag is ignored by the Dataview aggregation in `TaskManagement.md`.
 - **Race on first append of the day**: if today's daily note does not yet exist and `daily:append` is unsupported, the fallback must `create` before `append`. The script handles this; bypassing the script and calling `append` directly will error if the file is absent.
-- **Section heading drift**: if the user renames `## Tasks` to `## Todo`, blind appends to `section="Tasks"` will create a new (duplicate) section. Read the daily note at the start of a session to learn the actual headings.
-- **Timezone for `date +%F`**: the fallback uses the system's local timezone. If the user works across timezones and expects "today" to mean their home timezone, this may diverge late at night. The `daily:append` form delegates to Obsidian, which handles timezone consistently with the user's vault settings.
-- **Duplicate timestamp entries**: `daily:append` does not deduplicate. If the user re-runs the same command, both entries land. This is intentional — it preserves a true log — but worth noting.
+- **Duplicate meeting blocks**: `daily:append` does not deduplicate. Check the note has no existing block for the same meeting before appending.
