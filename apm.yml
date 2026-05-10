@@ -4,12 +4,17 @@ description: "Standard AI configuration managed by APM"
 dependencies:
   apm:
     # Skills from GitHub repository
+    ## Anthropics
     - anthropics/skills/skills/skill-creator
     - anthropics/skills/skills/pdf
     - anthropics/skills/skills/docx
     - anthropics/skills/skills/xlsx
     - anthropics/skills/skills/claude-api
     - anthropics/skills/skills/doc-coauthoring
+    ## Original
+    - caron14/my-apm-config/skills/obsidian-core-io
+    - caron14/my-apm-config/skills/obsidian-daily-log
+    - caron14/my-apm-config/skills/obsidian-link-organizer
   mcp:
     # MCP managed via uvx (PyPI)
     - name: mcp-bigquery
