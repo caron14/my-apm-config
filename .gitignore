@@ -1,9 +1,14 @@
-apm.lock.yaml
-
-# APM dependencies
-apm_modules/
 .agents/*
 .claude/*
 .codex/*
 .github/*
 .vscode/*
+.mcp.json
+
+# Specific
+CLAUDE.md
+GEMINI.md
+
+# APM dependencies
+apm_modules/
+apm.lock.yaml
